@@ -1,5 +1,5 @@
 import tkinter as tk
-from maze import maze, is_walkable, find_marker, try_move, has_won
+from maze import maze, is_walkable, find_marker, try_move, has_won, generate_maze, unvisited_neighbors
 
 def draw_maze(canvas, maze, position):
     canvas.delete("all")
@@ -19,12 +19,12 @@ def draw_maze(canvas, maze, position):
 def main():
     window = tk.Tk()
     window.title("Maze")
-    canvas = tk.Canvas(window, width=280, height=200)
+    width = 13
+    height = 9
+    canvas = tk.Canvas(window, width=width*40, height=height*40)
     canvas.pack()
-    position = find_marker(maze, "S")
     status = tk.Label(window, text="Reach green exit")
     status.pack()
-    draw_maze(canvas, maze, position)
 
     def on_key(event):
         nonlocal position
@@ -40,9 +40,25 @@ def main():
                 position = try_move(maze, position, (0, 1))
         draw_maze(canvas, maze, position)
         if has_won(maze, position):
-             status.config(text="You won!")
+             status.config(text="win")
         print(event.keysym)
-    
+
+    def new_maze():
+         print("worked")
+         nonlocal position
+         nonlocal maze
+         maze = generate_maze(width, height)
+         position = find_marker(maze, "S")
+         status.config(text="Reach green exit")
+         draw_maze(canvas, maze, position)
+
+    maze = generate_maze(width, height)
+    position = find_marker(maze, "S")
+    button = tk.Button(window, command=new_maze, text="New Maze")
+    button.pack()
+
+    new_maze()
+
     window.bind("<KeyPress>", on_key)
     window.mainloop()
 
