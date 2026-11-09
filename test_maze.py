@@ -1,94 +1,116 @@
-from maze import maze, find_marker, is_walkable, try_move, has_won, generate_maze, unvisited_neighbors
-from unittest.mock import patch
+"""Contract for the divider model using grid[x][y] and (x, y) positions. Run: python3 test_maze.py."""
+from maze import create_grid, remove_wall, try_move
+
+grid = create_grid(height=3, width=4)
+assert len(grid) == 4
+assert all(len(column) == 3 for column in grid)
+assert all(
+    cell == {"north": True, "south": True, "east": True, "west": True}
+    for row in grid for cell in row
+)
+assert len({id(cell) for row in grid for cell in row}) == 12, "Each cell needs its own dictionary"
+
+# Closed walls block movement. Openings must work in both directions.
+for direction, destination, wall, opposite in [
+    ((-1, 0), (0, 1), "west", "east"),
+    ((1, 0), (2, 1), "east", "west"),
+    ((0, -1), (1, 0), "north", "south"),
+    ((0, 1), (1, 2), "south", "north"),
+]:
+    grid = create_grid(height=3, width=4)
+    assert try_move(grid, (1, 1), direction) == (1, 1)
+    remove_wall(grid, (1, 1), destination)
+    assert grid[1][1][wall] is False
+    assert grid[destination[0]][destination[1]][opposite] is False
+    reverse = (-direction[0], -direction[1])
+    assert try_move(grid, (1, 1), direction) == destination
+    assert try_move(grid, destination, reverse) == (1, 1)
+    assert sum(value is False for row in grid for cell in row for value in cell.values()) == 2
+
+# Reopening a passage is harmless.
+remove_wall(grid, (1, 1), (1, 2))
+assert try_move(grid, (1, 1), (0, 1)) == (1, 2)
+
+# Bounds protect movement even if an outer wall is accidentally absent.
+grid = create_grid(height=3, width=4)
+for position, direction, wall in [
+    ((0, 0), (-1, 0), "west"),
+    ((0, 0), (0, -1), "north"),
+    ((3, 2), (1, 0), "east"),
+    ((3, 2), (0, 1), "south"),
+]:
+    grid[position[0]][position[1]][wall] = False
+    assert try_move(grid, position, direction) == position
+
+# Opening a second passage must preserve the first one.
+grid = create_grid(height=3, width=4)
+remove_wall(grid, (1, 1), (1, 2))
+remove_wall(grid, (1, 1), (0, 1))
+assert grid[1][1] == {"north": True, "south": False, "east": True, "west": False}
+assert try_move(grid, (1, 1), (0, 1)) == (1, 2)
+assert try_move(grid, (1, 1), (-1, 0)) == (0, 1)
+
+print("Divider model checks passed!")
+
+# Next assignment: DFS generation using cells and a separate visited set.
+from maze import unvisited_neighbors, generate_maze
+from copy import deepcopy
 from random import Random
-from contextlib import redirect_stdout
-from io import StringIO
+from unittest.mock import patch
 
-assert find_marker(maze, "S") == (1, 1)
-assert find_marker(maze, "E") == (2, 5)
-assert is_walkable(maze, 1, 1)
-assert not is_walkable(maze, 1, 2)
-assert not is_walkable(maze, -1, 1)
-assert not is_walkable(maze, 5, 1)
-assert not is_walkable(maze, 1, -1)
-assert not is_walkable(maze, 1, 7)
-assert try_move(maze, (1, 1), (1, 0)) == (2, 1)   # down
-assert try_move(maze, (1, 1), (0, 1)) == (1, 1)   # wall
-assert try_move(maze, (1, 1), (-1, 0)) == (1, 1)  # wall
-assert has_won(maze, (2, 5))
-assert not has_won(maze, (1, 1))
-assert not has_won(maze, (3, 5))
+grid = create_grid(height=3, width=4)
+before = deepcopy(grid)
+assert set(unvisited_neighbors(grid, (0, 0), {(0, 0)})) == {(1, 0), (0, 1)}
+assert set(unvisited_neighbors(grid, (1, 1), {(1, 1), (2, 1)})) == {
+    (0, 1), (1, 0), (1, 2)
+}
+assert unvisited_neighbors(grid, (0, 0), {(0, 0), (1, 0), (0, 1)}) == []
+assert grid == before, "Finding neighbors must not change walls"
 
-# Full generation: cover all logical cells and connect every passage.
-for height, width in [(5, 7), (9, 13), (13, 9)]:
+for width, height in [(4, 3), (3, 5), (1, 1), (1, 4), (4, 1)]:
     for seed in range(5):
         rng = Random(seed)
-        # Repeatable randomness; hide the generator's temporary debug printing.
-        with patch("maze.random.choice", side_effect=rng.choice), redirect_stdout(StringIO()):
-            grid = generate_maze(height=height, width=width)
-        assert len(grid) == height
-        assert all(len(row) == width for row in grid)
-        assert all(square in "#.SE" for row in grid for square in row)
-        assert sum(row.count("S") for row in grid) == 1
-        assert sum(row.count("E") for row in grid) == 1
-        assert find_marker(grid, "S") == (1, 1)
-        assert find_marker(grid, "E") == (height - 2, width - 2)
-        assert not has_won(grid, (1, 1))
-        assert has_won(grid, (height - 2, width - 2))
-        assert all(square == "#" for square in grid[0] + grid[-1])
-        assert all(row[0] == row[-1] == "#" for row in grid)
+        with patch("maze.random.choice", side_effect=rng.choice):
+            grid = generate_maze(width=width, height=height)
+        assert len(grid) == width
+        assert all(len(column) == height for column in grid)
         assert all(
-            grid[r][c] in ".SE"
-            for r in range(1, height - 1, 2)
-            for c in range(1, width - 1, 2)
-        ), "Backtrack to visit every logical cell"
+            set(cell) == {"north", "south", "east", "west"}
+            and all(type(value) is bool for value in cell.values())
+            for column in grid for cell in column
+        )
+        assert all(grid[x][0]["north"] and grid[x][-1]["south"] for x in range(width))
+        assert all(grid[0][y]["west"] and grid[-1][y]["east"] for y in range(height))
+        for x in range(width):
+            for y in range(height):
+                if x + 1 < width:
+                    assert grid[x][y]["east"] == grid[x + 1][y]["west"]
+                if y + 1 < height:
+                    assert grid[x][y]["south"] == grid[x][y + 1]["north"]
 
-        passages = {
-            (r, c) for r, row in enumerate(grid)
-            for c, square in enumerate(row) if square in ".SE"
-        }
-        # Independently explore the result to verify that no passage is isolated.
-        reached = {(1, 1)}
-        pending = [(1, 1)]
+        reached = {(0, 0)}
+        pending = [(0, 0)]
         while pending:
-            r, c = pending.pop()
-            for neighbor in [(r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)]:
-                if neighbor in passages and neighbor not in reached:
+            position = pending.pop()
+            for direction in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                neighbor = try_move(grid, position, direction)
+                if neighbor not in reached:
                     reached.add(neighbor)
                     pending.append(neighbor)
-        assert (height - 2, width - 2) in reached, "Exit must be reachable"
-        assert reached == passages, "Every passage must connect to the start"
-        cell_count = ((height - 1) // 2) * ((width - 1) // 2)
-        assert len(passages) == 2 * cell_count - 1, "Carve one connection per new cell"
+        assert len(reached) == width * height, "Every cell must be reachable"
+        openings = sum(not wall for column in grid for cell in column for wall in cell.values())
+        assert openings == 2 * (width * height - 1), "A DFS maze has one connection per new cell"
 
-# Mutating one row must not change the others.
-grid[2][0] = "."
-assert all(grid[r][0] == "#" for r in range(height) if r != 2)
+print("Generation checks passed!")
 
-# Neighbors must stay inside the border and exclude visited destinations.
-grid = [["#" for _ in range(7)] for _ in range(5)]
-grid[1][1] = "."
-assert set(unvisited_neighbors(grid, (1, 1))) == {(3, 1), (1, 3)}
-grid[3][1] = "."
-assert set(unvisited_neighbors(grid, (1, 1))) == {(1, 3)}, "Exclude visited cells"
-assert set(unvisited_neighbors(grid, (3, 5))) == {(1, 5), (3, 3)}
+# Win condition: the bottom-right cell of an x-first grid.
+from maze import has_won
 
-print("Movement and generation checks passed!")
+for width, height in [(4, 3), (3, 5), (1, 1)]:
+    grid = create_grid(height=height, width=width)
+    assert has_won(grid, (width - 1, height - 1)), "Exit follows both grid dimensions"
+    if width * height > 1:
+        assert not has_won(grid, (0, 0))
+        assert not has_won(grid, (width - 1, height)), "Outside the grid is not a win"
 
-# Next milestone: a square of light, clipped at the grid edges.
-from maze import visible_squares
-
-fog_grid = [list("#####") for _ in range(5)]
-assert visible_squares(fog_grid, (2, 2), radius=1) == {
-    (r, c) for r in range(1, 4) for c in range(1, 4)
-}, "Include the player, diagonals, and walls"
-assert visible_squares(fog_grid, (0, 0), radius=1) == {
-    (0, 0), (0, 1), (1, 0), (1, 1)
-}, "Clip visibility at the grid edges"
-assert visible_squares(fog_grid, (2, 2), radius=0) == {(2, 2)}
-assert visible_squares(fog_grid, (2, 2), radius=10) == {
-    (r, c) for r in range(5) for c in range(5)
-}
-assert fog_grid == [list("#####") for _ in range(5)], "Visibility must not change the maze"
-
-print("All checks passed!")
+print("Win checks passed!")
