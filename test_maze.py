@@ -135,3 +135,35 @@ assert isinstance(visible_squares(grid, (0, 0)), set)
 assert grid == before, "Visibility must not modify maze walls"
 
 print("Fog checks passed!")
+
+# BFS contract: return a path including both endpoints, or None if unreachable.
+from maze import shortest_path
+
+grid = create_grid(height=2, width=3)
+assert shortest_path(grid, (0, 0), (0, 0)) == [(0, 0)]
+assert shortest_path(grid, (0, 0), (2, 0)) is None
+
+# Two routes to the same exit: a four-move detour and a two-move shortcut.
+for first, second in [
+    ((0, 0), (0, 1)), ((0, 1), (1, 1)),
+    ((1, 1), (2, 1)), ((2, 1), (2, 0)),
+    ((0, 0), (1, 0)), ((1, 0), (2, 0)),
+]:
+    remove_wall(grid, first, second)
+before = deepcopy(grid)
+assert shortest_path(grid, (0, 0), (2, 0)) == [(0, 0), (1, 0), (2, 0)]
+assert shortest_path(grid, (2, 0), (0, 0)) == [(2, 0), (1, 0), (0, 0)]
+assert grid == before, "Pathfinding must preserve the maze"
+
+with patch("maze.random.choice", side_effect=Random(7).choice):
+    grid = generate_maze(width=4, height=3)
+path = shortest_path(grid, (0, 0), (3, 2))
+assert path is not None
+assert path[0] == (0, 0) and path[-1] == (3, 2)
+assert len(path) == len(set(path)), "A shortest path does not revisit cells"
+for first, second in zip(path, path[1:]):
+    direction = (second[0] - first[0], second[1] - first[1])
+    assert abs(direction[0]) + abs(direction[1]) == 1
+    assert try_move(grid, first, direction) == second, "Paths must respect walls"
+
+print("Shortest-path checks passed!")

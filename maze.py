@@ -1,9 +1,5 @@
+from collections import deque
 import random
-
-def is_walkable(maze, x, y):
-    if 0 <= x <= len(maze) - 1 and 0 <= y <= len(maze[x]) - 1:
-        return maze[x][y] in ".SE"
-    return False
 
 def has_won(maze, position):
     return position == (len(maze) - 1, len(maze[0]) - 1)
@@ -79,3 +75,30 @@ def visible_squares(grid, position, radius=1):
             if 0 <= try_x <= len(grid) - 1 and 0 <= try_y <= len(grid[0]) - 1:
                 visible.add((try_x, try_y))
     return visible
+
+def shortest_path(grid, start, exit_position):
+    q = deque()
+    q.append(start)
+    visited = {start}
+    came_from = {start: None}
+
+    while q:
+        current = q.popleft()
+        for direction in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+            neighbor = try_move(grid, current, direction)
+            if neighbor not in visited:
+                visited.add(neighbor)
+                q.append(neighbor)
+                came_from[neighbor] = current
+
+    if not exit_position in came_from:
+        return None
+
+    path = list()
+    coord = exit_position
+    while coord != None:
+        path.append(coord)
+        coord = came_from[coord]
+
+    path.reverse()
+    return path
