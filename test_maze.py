@@ -1,4 +1,3 @@
-"""Contract for the divider model using grid[x][y] and (x, y) positions. Run: python3 test_maze.py."""
 from maze import create_grid, remove_wall, try_move
 
 grid = create_grid(height=3, width=4)
@@ -10,7 +9,7 @@ assert all(
 )
 assert len({id(cell) for row in grid for cell in row}) == 12, "Each cell needs its own dictionary"
 
-# Closed walls block movement. Openings must work in both directions.
+# closed walls block movement, openings must work in both directions
 for direction, destination, wall, opposite in [
     ((-1, 0), (0, 1), "west", "east"),
     ((1, 0), (2, 1), "east", "west"),
@@ -27,7 +26,7 @@ for direction, destination, wall, opposite in [
     assert try_move(grid, destination, reverse) == (1, 1)
     assert sum(value is False for row in grid for cell in row for value in cell.values()) == 2
 
-# Reopening a passage is harmless.
+# reopening a passage is harmless.
 remove_wall(grid, (1, 1), (1, 2))
 assert try_move(grid, (1, 1), (0, 1)) == (1, 2)
 
@@ -52,7 +51,6 @@ assert try_move(grid, (1, 1), (-1, 0)) == (0, 1)
 
 print("Divider model checks passed!")
 
-# Next assignment: DFS generation using cells and a separate visited set.
 from maze import unvisited_neighbors, generate_maze
 from copy import deepcopy
 from random import Random
@@ -103,7 +101,7 @@ for width, height in [(4, 3), (3, 5), (1, 1), (1, 4), (4, 1)]:
 
 print("Generation checks passed!")
 
-# Win condition: the bottom-right cell of an x-first grid.
+# Win condition
 from maze import has_won
 
 for width, height in [(4, 3), (3, 5), (1, 1)]:
@@ -114,3 +112,26 @@ for width, height in [(4, 3), (3, 5), (1, 1)]:
         assert not has_won(grid, (width - 1, height)), "Outside the grid is not a win"
 
 print("Win checks passed!")
+
+# Fog uses (x, y) coordinates and includes walls and diagonals
+from maze import visible_squares
+
+grid = create_grid(height=3, width=5)
+before = deepcopy(grid)
+assert visible_squares(grid, (2, 1), radius=1) == {
+    (x, y) for x in range(1, 4) for y in range(3)
+}
+assert visible_squares(grid, (0, 0), radius=1) == {
+    (0, 0), (1, 0), (0, 1), (1, 1)
+}
+assert visible_squares(grid, (4, 2), radius=1) == {
+    (3, 1), (4, 1), (3, 2), (4, 2)
+}, "Clip at the right and bottom edges of an x-first grid"
+assert visible_squares(grid, (2, 1), radius=0) == {(2, 1)}
+assert visible_squares(grid, (2, 1), radius=10) == {
+    (x, y) for x in range(5) for y in range(3)
+}
+assert isinstance(visible_squares(grid, (0, 0)), set)
+assert grid == before, "Visibility must not modify maze walls"
+
+print("Fog checks passed!")

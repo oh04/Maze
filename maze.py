@@ -1,10 +1,5 @@
 import random
 
-def main():
-    print()
-
-maze = ["#######", "#S#...#", "#.#.#E#", "#...#.#", "#######",]
-
 def is_walkable(maze, x, y):
     if 0 <= x <= len(maze) - 1 and 0 <= y <= len(maze[x]) - 1:
         return maze[x][y] in ".SE"
@@ -75,3 +70,12 @@ def try_move(grid, position, direction):
     if 0 <= new_x <= len(grid) - 1 and 0 <= new_y <= len(grid[x]) - 1 and not grid[x][y][move]:
         return (new_x, new_y)
     return position
+
+def visible_squares(grid, position, radius=1):
+    x, y = position
+    visible = set()
+    for try_x in range(x - radius, x + radius + 1):
+        for try_y in range(y - radius, y + radius + 1):
+            if 0 <= try_x <= len(grid) - 1 and 0 <= try_y <= len(grid[0]) - 1:
+                visible.add((try_x, try_y))
+    return visible
