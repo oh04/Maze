@@ -1,6 +1,37 @@
 from collections import deque
 import random
 
+PRESETS = {
+    "Easy": {
+        "width": 8,
+        "height": 6,
+        "fog_enabled": False,
+        "light_radius": 2,
+        "show_revealed": True
+    },
+    "Medium": {
+        "width": 13,
+        "height": 9,
+        "fog_enabled": True,
+        "light_radius": 2,
+        "show_revealed": True
+    },
+    "Hard": {
+        "width": 18,
+        "height": 12,
+        "fog_enabled": True,
+        "light_radius": 1,
+        "show_revealed": True
+    },
+    "Impossible": {
+        "width": 24,
+        "height": 16,
+        "fog_enabled": True,
+        "light_radius": 1,
+        "show_revealed": False
+    }
+}
+
 def has_won(maze, position):
     return position == (len(maze) - 1, len(maze[0]) - 1)
 
@@ -91,14 +122,40 @@ def shortest_path(grid, start, exit_position):
                 q.append(neighbor)
                 came_from[neighbor] = current
 
-    if not exit_position in came_from:
+    if exit_position not in came_from:
         return None
 
-    path = list()
+    path = []
     coord = exit_position
-    while coord != None:
+    while coord is not None:
         path.append(coord)
         coord = came_from[coord]
 
     path.reverse()
     return path
+
+def light_diag(position, cell, radius=1):
+    x, y = position
+    i, j = cell
+    dif_x = abs(x - i)
+    dif_y = abs(y - j)
+    if dif_x > radius or dif_y > radius:
+        return 0
+    elif dif_x == 0 and dif_y == 0:
+        return 1
+    elif dif_x == radius and dif_y == radius:
+        return 0.5
+    else:
+        return 1
+
+def get_diff(difficulty, custom=None):
+    if difficulty == "Custom":
+        if custom is None:
+            raise ValueError
+        diff = custom.copy()
+    elif difficulty in PRESETS:
+        diff = PRESETS[difficulty].copy()
+    else:
+        raise ValueError
+    diff["difficulty"] = difficulty
+    return diff
