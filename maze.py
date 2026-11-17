@@ -159,3 +159,62 @@ def get_diff(difficulty, custom=None):
         raise ValueError
     diff["difficulty"] = difficulty
     return diff
+
+def stats():
+    return {
+        "Easy": {
+                    "wins": 0,
+                    "give_ups": 0,
+                    "avg_moves": None,
+                    "avg_excess": None,
+                    "best_excess": None,
+                    "worst_excess": None
+                },
+        "Medium": {
+                    "wins": 0,
+                    "give_ups": 0,
+                    "avg_moves": None,
+                    "avg_excess": None,
+                    "best_excess": None,
+                    "worst_excess": None
+                },
+        "Hard": {
+                    "wins": 0,
+                    "give_ups": 0,
+                    "avg_moves": None,
+                    "avg_excess": None,
+                    "best_excess": None,
+                    "worst_excess": None
+                },
+        "Impossible": {
+                    "wins": 0,
+                    "give_ups": 0,
+                    "avg_moves": None,
+                    "avg_excess": None,
+                    "best_excess": None,
+                    "worst_excess": None
+                }
+
+    }
+
+def record_results(stats, difficulty, won, moves, shortest_moves):
+    if difficulty == "Custom":
+        return
+    record = stats[difficulty]
+    if not won:
+        record["give_ups"] += 1
+        return
+    excess = moves - shortest_moves
+    record["wins"] += 1
+    if record["best_excess"] is None:
+        record["avg_moves"] = moves
+        record["best_excess"] = excess
+        record["worst_excess"] = excess
+        record["avg_excess"] = excess
+        return
+    record["avg_moves"] = ((record["avg_moves"] * (record["wins"] - 1)) + moves) / record["wins"]
+    record["avg_excess"] = ((record["avg_excess"] * (record["wins"] - 1)) + excess) / record["wins"]
+    if excess < record["best_excess"]:
+        record["best_excess"] = excess
+    elif excess > record["worst_excess"]:
+        record["worst_excess"] = excess
